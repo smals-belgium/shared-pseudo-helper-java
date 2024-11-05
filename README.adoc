@@ -874,7 +874,7 @@ In this example, as a user of a pseudonymised REST API, I want to pseudonymise a
 .Synchronous code
 [source,java]
 ----
-final Pseudonym pseudonym =
+var pseudonym =
     pseudonymisationHelper
         .getDomain().get()
         .valueFactory()
@@ -885,7 +885,7 @@ final Pseudonym pseudonym =
 .Asynchronous code
 [source,java]
 ----
-final Pseudonym pseudonym =
+var pseudonym =
     pseudonymisationHelper
         .getDomain("uhmep_v1")
         .thenApply(Domain::valueFactory)
@@ -904,7 +904,7 @@ You can use any Charset you want to have better control over the string-to-bytes
 .Using default Charset (UTF-8)
 [source,java]
 ----
-final Pseudonym pseudonym =
+var pseudonym =
     pseudonymisationHelper
         .getDomain().get()
         .valueFactory()
@@ -915,7 +915,7 @@ final Pseudonym pseudonym =
 .Using ISO-88659-1 Charset
 [source,java]
 ----
-final Pseudonym pseudonym =
+var pseudonym =
     pseudonymisationHelper
         .getDomain().get()
         .valueFactory()
@@ -940,7 +940,7 @@ The REST API should not be able to decrypt the information, so the encryption ke
 .Synchronous code
 [source,java]
 ----
-final Pseudonym pseudonym =
+var pseudonym =
     pseudonymisationHelper
         .getDomain("uhmep_v1").get()
         .valueFactory()
@@ -951,7 +951,7 @@ final Pseudonym pseudonym =
 .Asynchronous code
 [source,java]
 ----
-final Pseudonym pseudonym =
+var pseudonym =
     pseudonymisationHelper
         .getDomain("uhmep_v1")
         .thenApply(Domain::valueFactory)
@@ -1047,7 +1047,7 @@ As a REST API, I want to get the pseudonym at rest (always the same for a citize
 .Synchronous code
 [source,java]
 ----
-final var pseudonymAtRest =
+var pseudonymAtRest =
     pseudonymisationHelper
         .getDomain("uhmep_v1").get()
         .pseudonymInTransitFactory()
