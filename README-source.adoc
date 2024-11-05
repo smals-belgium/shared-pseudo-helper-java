@@ -554,6 +554,21 @@ var pseudonym =
         .get();
 ----
 
+=== Generates a pseudonym in transit for an SSIN for a pseudo-unaware domain
+
+As a REST API, I want to generate a pseudonym in transit (for a pseudo-unaware domain) from an SSIN before to return it to the caller.
+
+.Synchronous code
+[source,java]
+----
+var pseudonym =
+    pseudonymisationHelper
+        .getDomain().get()
+        .valueFactory()
+        .from("00000000097")
+        .asPseudonymInTransit();
+----
+
 === Pseudonymise multiple SSINs
 
 .Synchronous code
@@ -651,6 +666,24 @@ var pseudonymAtRest =
 // We assume patientInfoService is the service that allows you to retrieve information about a patient from your database
 // Please note that you should only save the `x` coordinate in the database
 var patientInfo = patientInfoService.getByPseudonym(pseudonymAtRest);
+----
+
+=== Resolve an SSIN from a pseudonym in transit from a pseudo-unaware domain
+
+As a REST API, I want to get the SSIN from a pseudonym in transit from a pseudo-unaware domain (i.e., a domains where `pseudonymize` and `identify` operations are never used, as I am authorized to access the SSIN) to find information about a citizen in my database.
+
+.Synchronous code
+[source,java]
+----
+final var ssin =
+    pseudonymisationHelper
+        .getDomain("ehealth_v1").get()
+        .pseudonymInTransitFactory()
+        .fromSec1AndTransitInfo("...")
+        .asValue()
+        .asString();
+// We assume patientInfoService is the service that allows you to retrieve information about a patient from your database
+var patientInfo = patientInfoService.getByPseudonym(ssin);
 ----
 
 === Generate a pseudonym in transit from a pseudonym at rest

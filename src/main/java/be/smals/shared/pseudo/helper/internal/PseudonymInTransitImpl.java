@@ -89,6 +89,11 @@ public final class PseudonymInTransitImpl extends PseudonymImpl implements Pseud
   }
 
   @Override
+  public ValueImpl asValue() {
+    return ((PseudonymImpl)atRest()).asValue();
+  }
+
+  @Override
   PseudonymInTransitImpl multiply(final BigInteger scalar) {
     return new PseudonymInTransitImpl(super.multiply(scalar), transitInfo);
   }

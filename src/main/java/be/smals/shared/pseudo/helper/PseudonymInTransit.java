@@ -1,6 +1,7 @@
 package be.smals.shared.pseudo.helper;
 
 import be.smals.shared.pseudo.helper.exceptions.InvalidTransitInfoException;
+import be.smals.shared.pseudo.helper.internal.ValueImpl;
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("unused")
@@ -74,5 +75,15 @@ public interface PseudonymInTransit extends Pseudonym {
    */
   @Override
   PseudonymInTransit inTransit();
+
+  /**
+   * Decrypts this {@link PseudonymInTransit} and returns the result as a {@link Value}.
+   * <p>
+   * Use this only with {@link PseudonymInTransit}s from 'pseudo-unaware domains'
+   * (i.e., domains where `pseudonymize` and `identify` operations are never used, as the domain owners are authorized to access real values, such as SSIN).
+   *
+   * @return this {@link Pseudonym} as a {@link Value}
+   */
+  ValueImpl asValue();
   // end::methods[]
 }

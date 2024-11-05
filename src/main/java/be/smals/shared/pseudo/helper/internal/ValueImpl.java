@@ -3,6 +3,8 @@ package be.smals.shared.pseudo.helper.internal;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import be.smals.shared.pseudo.helper.Domain;
+import be.smals.shared.pseudo.helper.PseudonymInTransit;
+import be.smals.shared.pseudo.helper.TransitInfoCustomizer;
 import be.smals.shared.pseudo.helper.Value;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -41,6 +43,16 @@ public final class ValueImpl extends PseudonymImpl implements Value {
   @Override
   public PseudonymImpl asPseudonym() {
     return this;
+  }
+
+  @Override
+  public PseudonymInTransit asPseudonymInTransit() {
+    return inTransit(NO_OP_TRANSIT_INFO_CUSTOMIZER);
+  }
+
+  @Override
+  public PseudonymInTransit asPseudonymInTransit(final TransitInfoCustomizer transitInfoCustomizer) {
+    return inTransit(transitInfoCustomizer);
   }
 
   @Override
