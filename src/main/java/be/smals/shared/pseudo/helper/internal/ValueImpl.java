@@ -46,7 +46,7 @@ public final class ValueImpl extends PseudonymImpl implements Value {
   @Override
   public CompletableFuture<PseudonymInTransitImpl> pseudonymize() {
     final var random = domain.createRandom();
-    final var blindedValue = new PseudonymImpl(ecPoint.multiply(random).normalize(), domain);
+    final var blindedValue = multiply(random);
     final var payload = domain.createPayloadString(blindedValue);
     final var pseudonymInTransitFactory = domain.pseudonymInTransitFactory();
     return domain.pseudonymisationClient().pseudonymize(domain.key(), payload)

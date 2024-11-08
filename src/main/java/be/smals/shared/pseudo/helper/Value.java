@@ -9,7 +9,24 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings("unused")
 public interface Value extends Point {
 
+  /**
+   * Should not be used in regular usage, but it can be convenient for testing/logging purpose.
+   *
+   * @see Point#x()
+   */
+  @Override
+  String x();
+
+  /**
+   * Should not be used in regular usage, but it can be convenient for testing/logging purpose.
+   *
+   * @see Point#y()
+   */
+  @Override
+  String y();
+
   // tag::methods[]
+
   /**
    * Returns the value as a bytes array.
    * <p>
@@ -48,7 +65,9 @@ public interface Value extends Point {
    * Should not be used in regular usage, but it can be convenient for testing/logging purpose.
    *
    * @return this {@link Value} as a {@link Pseudonym}.
+   * @deprecated It will be removed soon to avoid developpers to consider the value as a pseudonymized value.
    */
+  @Deprecated
   Pseudonym asPseudonym();
 
   /**
