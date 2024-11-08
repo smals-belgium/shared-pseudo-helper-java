@@ -10,24 +10,19 @@ public interface Pseudonym extends Point {
 
   // tag::methods[]
   /**
-   * Returns binary representation of the X coordinate (as a byte array converted in a Base64 String).
-   *
-   * @return binary representation of the X coordinate (as a byte array converted in a Base64 String)
-   */
-  String x();
-
-  /**
-   * Returns binary representation of the Y coordinate (as a byte array converted in a Base64 String).
-   *
-   * @return binary representation of the Y coordinate (as a byte array converted in a Base64 String)
-   */
-  String y();
-
-  /**
    * Base64 URL encoded uncompressed SEC1 Elliptic-Curve-Point-to-Octet-String Conversion of this point.
    *
    * @return Base64 URL encoded the uncompressed SEC1 Elliptic-Curve-Point-to-Octet-String Conversion of this point
    */
+  String asString();
+
+  /**
+   * Calls {@link #asString()}.
+   *
+   * @return String returned by {@link #asString()}
+   * @deprecated Please use {@link #asString()} instead.
+   */
+  @Deprecated(forRemoval = true)
   String sec1();
 
   /**
@@ -35,6 +30,15 @@ public interface Pseudonym extends Point {
    *
    * @return compressed SEC 1 representation of this point
    */
+  String asShortString();
+
+  /**
+   * Calls {@link #asShortString()}.
+   *
+   * @return String returned by {@link #asShortString()}
+   * @deprecated Please use {@link #asShortString()} instead.
+   */
+  @Deprecated(forRemoval = true)
   String sec1Compressed();
 
   /**

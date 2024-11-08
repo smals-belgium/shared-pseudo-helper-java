@@ -8,4 +8,18 @@ public interface Point {
    * @return the domain that owns this point
    */
   Domain domain();
+
+  /**
+   * Returns binary representation of the X coordinate (as a byte array converted in a Base64 String).
+   *
+   * @return binary representation of the X coordinate (as a byte array converted in a Base64 String)
+   */
+  String x();
+
+  /**
+   * Returns binary representation of the Y coordinate (as a byte array converted in a Base64 String).
+   *
+   * @return binary representation of the Y coordinate (as a byte array converted in a Base64 String)
+   */
+  String y();
 }

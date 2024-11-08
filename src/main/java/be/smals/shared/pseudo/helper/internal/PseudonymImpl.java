@@ -29,13 +29,25 @@ public class PseudonymImpl extends PointImpl implements Pseudonym {
   }
 
   @Override
-  public String sec1() {
+  public String asString() {
     return base64EncoderWithoutPadding.encodeToString(ecPoint.getEncoded(false));
   }
 
+  @SuppressWarnings("removal")
+  @Override
+  public String sec1() {
+    return asString();
+  }
+
+  @Override
+  public String asShortString() {
+    return base64EncoderWithoutPadding.encodeToString(ecPoint.getEncoded(true));
+  }
+
+  @SuppressWarnings("removal")
   @Override
   public String sec1Compressed() {
-    return base64EncoderWithoutPadding.encodeToString(ecPoint.getEncoded(true));
+    return asShortString();
   }
 
   @Override
