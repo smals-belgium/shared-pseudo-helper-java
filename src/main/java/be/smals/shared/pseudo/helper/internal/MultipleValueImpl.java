@@ -44,7 +44,7 @@ public final class MultipleValueImpl extends MultiplePointImpl<Value> implements
     payload.add("inputs", inputs);
     for (int i = 0; i < nbValues; i++) {
       final var random = domain.createRandom();
-      inputs.add(domain.createPayload(((ValueImpl) points.get(0)).multiply(random)));
+      inputs.add(domain.createPayload(((ValueImpl) points.get(i)).multiply(random)));
       randoms.add(random);
     }
     return domain.pseudonymisationClient()
