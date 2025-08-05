@@ -144,7 +144,7 @@ To add the Pseudonymisation Helper library in your project, you can add this Mav
 <dependency>
   <groupId>be.smals.shared.pseudo</groupId>
   <artifactId>pseudo-helper</artifactId>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
 </dependency>
 ----
 
@@ -849,12 +849,12 @@ A PseudonymInTransit object represents a pseudonymInTransit that contains a Pseu
   Pseudonym atRest(boolean validateIatAndExp) throws InvalidTransitInfoException;
 
   /**
-   * Returns {@code this} because it is already a {@link PseudonymInTransit}.
+   * Convert this {@link PseudonymInTransit} into a {@link PseudonymInTransit} for the given domain.
    *
-   * @return this
+   * @param toDomain the target domain for the returned {@link PseudonymInTransit}
+   * @return a {@link PseudonymInTransit} for the given domain, matching this {@link PseudonymInTransit}
    */
-  @Override
-  PseudonymInTransit inTransit();
+  CompletableFuture<? extends PseudonymInTransit> convertTo(Domain toDomain);
 ----
 
 == Use of PseudonymisationHelper in real use cases

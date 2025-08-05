@@ -11,19 +11,52 @@ import java.util.Base64;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-public final class PseudonymInTransitImpl extends PseudonymImpl implements PseudonymInTransit {
+public final class PseudonymInTransitImpl implements PseudonymInTransit {
 
+  private final PseudonymImpl pseudonym;
   private final TransitInfoImpl transitInfo;
   private Pseudonym decryptedPseudonym;
 
   public PseudonymInTransitImpl(final Pseudonym pseudonym, final TransitInfo transitInfo, final Pseudonym decryptedPseudonym) {
-    super(((PseudonymImpl) pseudonym).ecPoint, ((PseudonymImpl) pseudonym).domain);
+    this.pseudonym = (PseudonymImpl) pseudonym;
     this.transitInfo = (TransitInfoImpl) transitInfo;
     this.decryptedPseudonym = decryptedPseudonym;
   }
 
   public PseudonymInTransitImpl(final Pseudonym pseudonym, final TransitInfo transitInfo) {
     this(pseudonym, transitInfo, null);
+  }
+
+  @Override
+  public Domain domain() {
+    return pseudonym.domain;
+  }
+
+  @Override
+  public String x() {
+    return pseudonym.x();
+  }
+
+  @Override
+  public String y() {
+    return pseudonym.y();
+  }
+
+  @SuppressWarnings("removal")
+  @Override
+  public String sec1() {
+    return pseudonym.asString();
+  }
+
+  @SuppressWarnings("removal")
+  @Override
+  public String sec1Compressed() {
+    return pseudonym.asShortString();
+  }
+
+  @Override
+  public PseudonymImpl pseudonym() {
+    return pseudonym;
   }
 
   @Override
@@ -43,8 +76,9 @@ public final class PseudonymInTransitImpl extends PseudonymImpl implements Pseud
 
   @Override
   public CompletableFuture<ValueImpl> identify() {
+    final var domain = pseudonym.domain;
     final var random = domain.createRandom();
-    final var blindedPseudonym = multiply(random);
+    final var blindedPseudonym = pseudonym.multiply(random);
     final var payload = domain.createPayloadString(blindedPseudonym, transitInfo().asString());
     return domain.pseudonymisationClient().identify(domain.key(), payload)
                  .thenApply(rawResponse -> {
@@ -71,26 +105,23 @@ public final class PseudonymInTransitImpl extends PseudonymImpl implements Pseud
       transitInfo.validatePayload();
     }
     final var scalar = new BigInteger(Base64.getDecoder().decode((String) payload.get("scalar")));
-    return new PseudonymImpl(ecPoint.multiply(scalar).normalize(), domain);
+    return pseudonym.multiply(scalar);
   }
 
   @Override
   public CompletableFuture<PseudonymInTransitImpl> convertTo(final Domain toDomain) {
+    final var domain = pseudonym.domain;
     final var random = domain.createRandom();
-    final var blindedPseudonym = multiply(random);
+    final var blindedPseudonym = pseudonym.multiply(random);
     final var payload = domain.createPayloadString(blindedPseudonym, transitInfo.asString());
     return domain.pseudonymisationClient().convertTo(domain.key(), toDomain.key(), payload)
                  .thenApply(s -> ((PseudonymInTransitFactoryImpl) toDomain.pseudonymInTransitFactory()).fromRawResponse(s, random));
   }
 
+  @SuppressWarnings("removal")
   @Override
-  public PseudonymInTransitImpl inTransit() {
+  public PseudonymInTransit inTransit() {
     return this;
-  }
-
-  @Override
-  PseudonymInTransitImpl multiply(final BigInteger scalar) {
-    return new PseudonymInTransitImpl(super.multiply(scalar), transitInfo);
   }
 
   @Override
@@ -98,22 +129,22 @@ public final class PseudonymInTransitImpl extends PseudonymImpl implements Pseud
     if (obj == this) {return true;}
     if (!(obj instanceof PseudonymInTransitImpl)) {return false;}
     final var that = (PseudonymInTransitImpl) obj;
-    return Objects.equals(ecPoint.getXCoord(), that.ecPoint.getXCoord()) &&
-           Objects.equals(domain.key(), that.domain.key()) &&
+    return Objects.equals(pseudonym.ecPoint.getXCoord(), that.pseudonym.ecPoint.getXCoord()) &&
+           Objects.equals(pseudonym.domain.key(), that.pseudonym.domain.key()) &&
            Objects.equals(this.transitInfo, that.transitInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(ecPoint.getXCoord(), domain.key(), transitInfo);
+    return Objects.hash(pseudonym.ecPoint.getXCoord(), pseudonym.domain.key(), transitInfo);
   }
 
   @Override
   public String toString() {
     return "{" +
-           "\"x\": \"" + x() + "\", " +
-           "\"y\": \"" + y() + "\"," +
-           "\"domain\": \"" + domain.key() + "\"," +
+           "\"x\": \"" + pseudonym.x() + "\", " +
+           "\"y\": \"" + pseudonym.y() + "\"," +
+           "\"domain\": \"" + pseudonym.domain.key() + "\"," +
            "\"transitInfo\": " + transitInfo +
            '}';
   }

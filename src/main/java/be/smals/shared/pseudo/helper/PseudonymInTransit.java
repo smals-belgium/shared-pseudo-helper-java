@@ -1,14 +1,40 @@
 package be.smals.shared.pseudo.helper;
 
 import be.smals.shared.pseudo.helper.exceptions.InvalidTransitInfoException;
+import be.smals.shared.pseudo.helper.internal.PseudonymImpl;
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("unused")
-public interface PseudonymInTransit extends Pseudonym {
+public interface PseudonymInTransit extends Point {
+
+  /**
+   * Base64 URL encoded uncompressed SEC1 Elliptic-Curve-Point-to-Octet-String Conversion of this point.
+   *
+   * @return Base64 URL encoded the uncompressed SEC1 Elliptic-Curve-Point-to-Octet-String Conversion of this point
+   * @deprecated Please call {@link #pseudonym()}.{@link Pseudonym#asString() asString()} instead.
+   */
+  @Deprecated(forRemoval = true)
+  String sec1();
+
+  /**
+   * Base64 URL encoded compressed SEC1 Elliptic-Curve-Point-to-Octet-String Conversion of this point.
+   *
+   * @return Base64 URL encoded the compressed SEC1 Elliptic-Curve-Point-to-Octet-String Conversion of this point
+   * @deprecated Please call {@link #pseudonym()}.{@link Pseudonym#asShortString() asString()} instead.
+   */
+  @Deprecated(forRemoval = true)
+  String sec1Compressed();
 
   // tag::methods[]
   /**
-   * Returns the {@link TransitInfo}.
+   * Returns the {@link Pseudonym} of this {@link PseudonymInTransit}.
+   *
+   * @return the {@link Pseudonym} of this {@link PseudonymInTransit}
+   */
+  PseudonymImpl pseudonym();
+
+  /**
+   * Returns the {@link TransitInfo} of this {@link PseudonymInTransit}.
    *
    * @return the {@link TransitInfo}
    */
@@ -68,11 +94,20 @@ public interface PseudonymInTransit extends Pseudonym {
   Pseudonym atRest(boolean validateIatAndExp) throws InvalidTransitInfoException;
 
   /**
+   * Convert this {@link PseudonymInTransit} into a {@link PseudonymInTransit} for the given domain.
+   *
+   * @param toDomain the target domain for the returned {@link PseudonymInTransit}
+   * @return a {@link PseudonymInTransit} for the given domain, matching this {@link PseudonymInTransit}
+   */
+  CompletableFuture<? extends PseudonymInTransit> convertTo(Domain toDomain);
+  // end::methods[]
+
+  /**
    * Returns {@code this} because it is already a {@link PseudonymInTransit}.
    *
    * @return this
+   * @deprecated This method returns {@code this}: there is no need to keep it.
    */
-  @Override
+  @Deprecated(forRemoval = true)
   PseudonymInTransit inTransit();
-  // end::methods[]
 }

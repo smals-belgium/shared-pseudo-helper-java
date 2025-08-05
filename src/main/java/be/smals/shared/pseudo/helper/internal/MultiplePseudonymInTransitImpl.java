@@ -53,7 +53,8 @@ public final class MultiplePseudonymInTransitImpl extends MultiplePointImpl<Pseu
     payload.add("inputs", inputs);
     for (int i = 0; i < nbPseudonymsInTransit; i++) {
       final var random = domain.createRandom();
-      inputs.add(domain.createPayload(((PseudonymInTransitImpl) points.get(i)).multiply(random)));
+      final var pseudonymInTransit = (PseudonymInTransitImpl) points.get(i);
+      inputs.add(domain.createPayload(pseudonymInTransit.pseudonym().multiply(random), pseudonymInTransit.transitInfo().asString()));
       randoms.add(random);
     }
     return domain.pseudonymisationClient()
@@ -102,7 +103,8 @@ public final class MultiplePseudonymInTransitImpl extends MultiplePointImpl<Pseu
     payload.add("inputs", inputs);
     for (int i = 0; i < nbPseudonymsInTransit; i++) {
       final var random = domain.createRandom();
-      inputs.add(domain.createPayload(((PseudonymInTransitImpl) points.get(i)).multiply(random)));
+      final var pseudonymInTransit = (PseudonymInTransitImpl) points.get(i);
+      inputs.add(domain.createPayload(pseudonymInTransit.pseudonym().multiply(random), pseudonymInTransit.transitInfo().asString()));
       randoms.add(random);
     }
     return domain.pseudonymisationClient()
