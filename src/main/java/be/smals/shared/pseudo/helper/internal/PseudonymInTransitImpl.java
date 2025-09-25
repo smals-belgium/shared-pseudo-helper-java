@@ -66,12 +66,12 @@ public final class PseudonymInTransitImpl implements PseudonymInTransit {
 
   @Override
   public String asString() {
-    return sec1() + ":" + transitInfo.asString();
+    return pseudonym.asString() + ":" + transitInfo.asString();
   }
 
   @Override
   public String asShortString() {
-    return sec1Compressed() + ":" + transitInfo.asString();
+    return pseudonym.asShortString() + ":" + transitInfo.asString();
   }
 
   @Override

@@ -1,7 +1,6 @@
 package be.smals.shared.pseudo.helper;
 
 import be.smals.shared.pseudo.helper.exceptions.InvalidTransitInfoException;
-import be.smals.shared.pseudo.helper.internal.PseudonymImpl;
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("unused")
@@ -31,7 +30,7 @@ public interface PseudonymInTransit extends Point {
    *
    * @return the {@link Pseudonym} of this {@link PseudonymInTransit}
    */
-  PseudonymImpl pseudonym();
+  Pseudonym pseudonym();
 
   /**
    * Returns the {@link TransitInfo} of this {@link PseudonymInTransit}.
