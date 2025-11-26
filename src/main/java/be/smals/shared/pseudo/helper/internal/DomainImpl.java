@@ -106,7 +106,7 @@ public class DomainImpl implements Domain {
   }
 
   String createPayloadString(final Pseudonym pseudonym) {
-    return createPayloadString(pseudonym, pseudonym instanceof PseudonymInTransit ? ((PseudonymInTransit) pseudonym).transitInfo().asString() : null);
+    return createPayload(pseudonym, null).toString();
   }
 
   String createPayloadString(final Pseudonym pseudonym, final String transitInfo) {
