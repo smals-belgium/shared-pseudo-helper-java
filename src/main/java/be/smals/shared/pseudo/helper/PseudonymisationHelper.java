@@ -3,12 +3,16 @@ package be.smals.shared.pseudo.helper;
 import static be.smals.shared.pseudo.helper.exceptions.ThrowableWrapperException.throwWrapped;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.synchronizedSet;
+import static java.util.concurrent.CompletableFuture.failedFuture;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 
 import be.smals.shared.pseudo.helper.exceptions.ThrowableWrapperException;
 import be.smals.shared.pseudo.helper.internal.DomainImpl;
 import be.smals.shared.pseudo.helper.utils.ThrowingFunction;
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JWEObjectJSON;
+import com.nimbusds.jose.UnprotectedHeader;
 import com.nimbusds.jose.crypto.MultiDecrypter;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -23,6 +27,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -82,26 +87,21 @@ public final class PseudonymisationHelper {
     unmodifiableCopyOfRefreshableDomains = Set.of();
     secureRandom = CryptoServicesRegistrar.getSecureRandom();
     domainsLock = new Object();
-    if (jwksUrl == null) {
-      log.info("`jwksUrl` is null: this `PseudonymisationHelper` will not be able to encrypt or decrypt any transit info");
-    }
-    if (jwksSupplier == null) {
-      log.info("`jwksSupplier` is null: this `PseudonymisationHelper` will not be able to encrypt or decrypt any transit info");
-      jwkSet = CompletableFuture.failedFuture(new NullPointerException("`jwksSupplier` cannot be null if you need to encrypt/decrypt transit info"));
-    } else {
-      refreshJwks();
-    }
-    Stream.of(Map.entry("jwksSupplier", Optional.ofNullable(jwksSupplier)))
+    initJwksSilently();
+    Stream.of(Map.entry("jwksSupplier", Optional.ofNullable(jwksSupplier)),
+              Map.entry("jwksUrl", Optional.ofNullable(jwksUrl)))
           .filter(property -> property.getValue().isEmpty())
-          .forEach(property -> log.info("`{}` is null: this PseudonymisationHelper will not be able to encrypt or decrypt any transit info",
-                                        property.getKey()));
+          .forEach(property -> {
+            log.warn("`{}` is null: this PseudonymisationHelper will not be able to encrypt or decrypt any transit info", property.getKey());
+          });
     domains = new ConcurrentHashMap<>(8, 0.75f, 8);
   }
 
+  @SuppressWarnings("unchecked")
   public CompletableFuture<? extends Domain> getDomain(final String domainKey) {
-    return Optional.ofNullable(domains.get(domainKey))
+    return Optional.ofNullable((Domain) domains.get(domainKey))
                    .map(CompletableFuture::completedFuture)
-                   .orElseGet(() -> refreshDomain(domainKey).thenApply(unused -> domains.get(domainKey)));
+                   .orElseGet(() -> (CompletableFuture<Domain>) refreshDomain(domainKey));
   }
 
   /**
@@ -119,12 +119,16 @@ public final class PseudonymisationHelper {
     return unmodifiableCopyOfRefreshableDomains;
   }
 
-  public CompletableFuture<Void> refreshDomain(final String domainKey) {
+  public CompletableFuture<? extends Domain> refreshDomain(final String domainKey) {
     synchronized (domainsLock) {
       return pseudonymisationClient
                  .getDomain(domainKey)
+                 .orTimeout(5, SECONDS)
                  .thenApply(this::createDomain)
-                 .thenAccept(domain -> domains.put(domain.key(), domain));
+                 .thenApply(domain -> {
+                   domains.put(domain.key(), domain);
+                   return domain;
+                 });
     }
   }
 
@@ -147,26 +151,19 @@ public final class PseudonymisationHelper {
             final var kid = (String) secretKey.get("kid");
             @SuppressWarnings("unchecked")
             final var parsedJwe = JWEObjectJSON.parse((Map<String, Object>) secretKey.get("encoded"));
-            final var isActiveKid = TRUE.equals(secretKey.get("active"));
-            final var myKid = parsedJwe.getRecipients().stream()
-                                       .filter(recipient -> jku.equals(recipient.getUnprotectedHeader().getParam("jku")))
-                                       .findFirst()
-                                       .map(recipient -> recipient.getUnprotectedHeader().getKeyID());
-            if (myKid.isPresent()) {
-              final var privateKid = myKid.get();
-              final var jweKey = getJweKey(privateKid, domainKey);
-              // If the private key is known
-              if (jweKey != null) {
-                final var privateKey = privateKeySupplier.getByHash(jweKey.getX509CertSHA256Thumbprint().toString());
-                parsedJwe.decrypt(new MultiDecrypter(new RSAKey.Builder(jweKey.toRSAKey()).privateKey(privateKey).build()));
-                final var jwk = JWK.parse(parsedJwe.getPayload().toString());
-                final var algName = jwk.getAlgorithm().getName();
-                secretKeys.put(kid, ((OctetSequenceKey) jwk).toSecretKey(algName));
-                if (isActiveKid) {
-                  activeKid = kid;
-                  activeKeyAlgorithm = EncryptionMethod.parse(algName);
-                }
+            final var jweKey = getJweKey(parsedJwe, jku);
+            if (jweKey != null) {
+              final var privateKey = privateKeySupplier.getByHash(jweKey.getX509CertSHA256Thumbprint().toString());
+              parsedJwe.decrypt(new MultiDecrypter(new RSAKey.Builder(jweKey.toRSAKey()).privateKey(privateKey).build()));
+              final var jwk = JWK.parse(parsedJwe.getPayload().toString());
+              final var algName = jwk.getAlgorithm().getName();
+              secretKeys.put(kid, ((OctetSequenceKey) jwk).toSecretKey(algName));
+              if (TRUE.equals(secretKey.get("active"))) {
+                activeKid = kid;
+                activeKeyAlgorithm = EncryptionMethod.parse(algName);
               }
+            } else {
+              log.error("No matching kid found in the JWKS `{}`: impossible to encrypt/decrypt any transit info of the domain `{}`", jwksUrl, domainKey);
             }
           } catch (final ParseException e) {
             throw new ThrowableWrapperException(e);
@@ -198,45 +195,84 @@ public final class PseudonymisationHelper {
     }
   }
 
-  private JWK getJweKey(final String privateKid, final String domainKey) {
-    var jweKey = getJwks().getKeyByKeyId(privateKid);
-    // If the private key is unknown, we will refresh the JWKS
-    if (jweKey == null) {
-      refreshJwks();
-      jweKey = getJwks().getKeyByKeyId(privateKid);
+  /**
+   * Retrieves a JSON Web Key (JWK) matching the specified JSON Web Encryption (JWE) object and the JSON Web Key Set URL (JKU).
+   * The method identifies the appropriate key by examining the "unprotected headers" of the recipients in the parsed JWE object
+   * and finding a key in the JWKS that matches the key IDs (kids) associated with the given JKU.
+   * If no matching key is found initially, the JWKS is refreshed and the search is performed again.
+   *
+   * @param parsedJwe The parsed JWE object containing recipients' headers and encryption data.
+   * @param jku       The JSON Web Key Set URL used to match recipient key IDs to those in the JWK set.
+   * @return The matching JWK if found, or null if no matching key is available.
+   */
+  private JWK getJweKey(final JWEObjectJSON parsedJwe, final String jku) {
+    final var kids = parsedJwe.getRecipients().stream()
+                              .map(JWEObjectJSON.Recipient::getUnprotectedHeader)
+                              .filter(unprotectedHeader -> jku.equals(unprotectedHeader.getParam("jku")))
+                              .map(UnprotectedHeader::getKeyID)
+                              .collect(toList());
+    var jwks = getJwks();
+    var optionalJweKey = findMatchingJwk(jwks, kids);
+    if (optionalJweKey.isEmpty()) {
+      flagJwksForRefresh();
+      jwks = getJwks();
+      optionalJweKey = findMatchingJwk(jwks, kids);
     }
-    // If the private key is still unknown, we log the error
-    if (jweKey == null) {
-      //noinspection StringConcatenationArgumentToLogCall
-      log.error("The kid `" + privateKid +
-                "` is not present in the JWKS `" + jwksUrl +
-                "`: impossible to encrypt/decrypt any transit info of the domain `" + domainKey + "`");
-    }
-    return jweKey;
+    return optionalJweKey.orElse(null);
   }
 
-  private JWKSet getJwks() throws ThrowableWrapperException {
+  private Optional<JWK> findMatchingJwk(final JWKSet jwks, final List<String> kids) {
+    return kids.stream().map(jwks::getKeyByKeyId).filter(Objects::nonNull).findAny();
+  }
+
+  /**
+   * Retrieves the JSON Web Key Set (JWKS).
+   * If the process is interrupted, or an execution error occurs,
+   * the JWKS is flagged for refresh, and the cause of the error is rethrown.
+   *
+   * @return the current {@link JWKSet}
+   */
+  private JWKSet getJwks() {
     try {
       return jwkSet.get();
     } catch (final InterruptedException e) {
+      flagJwksForRefresh();
       Thread.currentThread().interrupt();
       return throwWrapped(e);
     } catch (final ExecutionException e) {
+      flagJwksForRefresh();
       return throwWrapped(e.getCause());
     }
   }
 
   /**
-   * Refresh the JWK set.
+   * Flag the JWK set for refresh.
    * <p>
-   * This method will retrieve the JWK set string by calling the `jwksSupplier` given in the constructor,
-   * every time there is an unknown key ID in your recipient of one of the JWE defined in the domain.
+   * This method will reinitialize the {@code CompletableFuture<JWKSet>} to force the retrieve of the JWK set.
+   * This method will be automatically called every time there is an unknown key ID in your recipient of one of the JWE defined in the domain.
    * Despite this, it is recommended to call this method as soon as you know that an update has been made to the JWKS.
    * <p>
    * It is up to you to cache or not the string returned by `jwksSupplier`.
+   * <p>
+   * If you did not provide any `jwksSupplier`, this method has no effect.
    */
-  public void refreshJwks() {
-    jwkSet = jwksSupplier.get().thenApply(ThrowingFunction.sneaky(JWKSet::parse));
+  public void flagJwksForRefresh() {
+    if (jwksSupplier != null) {
+      jwkSet = jwksSupplier.get().orTimeout(5, SECONDS).thenApply(ThrowingFunction.sneaky(JWKSet::parse));
+    }
+  }
+
+  private void initJwksSilently() {
+    if (jwksSupplier == null) {
+      jwkSet = failedFuture(new NullPointerException("`jwksSupplier` cannot be null if you need to encrypt/decrypt transit info"));
+      return;
+    }
+    flagJwksForRefresh();
+    try {
+      getJwks();
+    } catch (Exception e) {
+      log.error("Failed to retrieve JWKS", e);
+    }
   }
 
   /**
