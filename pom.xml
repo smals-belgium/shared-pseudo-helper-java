@@ -4,7 +4,7 @@
   <!-- tag::artifact[] -->
   <groupId>be.smals.shared.pseudo</groupId>
   <artifactId>pseudo-helper</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.2.0</version>
   <!-- end::artifact[] -->
   <name>Smals - Pseudonymisation - Helper</name>
   <url>https://github.com/smals-belgium/shared-pseudo-helper-java</url>
