@@ -3,6 +3,7 @@ package be.smals.shared.pseudo.helper;
 import static be.smals.shared.pseudo.helper.exceptions.ThrowableWrapperException.throwWrapped;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.synchronizedSet;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
@@ -119,8 +120,24 @@ public final class PseudonymisationHelper {
     return unmodifiableCopyOfRefreshableDomains;
   }
 
+  /**
+   * Refreshes the specified domain by retrieving its details from the eHealth pseudonymisation service,
+   * creating a new domain object, and updating the domain cache.
+   *
+   * @param domainKey the unique key identifying the domain to be refreshed
+   * @return a {@link CompletableFuture} containing the refreshed domain object
+   */
   public CompletableFuture<? extends Domain> refreshDomain(final String domainKey) {
+    final var domainsExistsBeforeSynchronizedBlock = domains.containsKey(domainKey);
     synchronized (domainsLock) {
+
+      // Handle race condition where another thread may have already created the domain
+      // between our initial check and entering the synchronized block.
+      // If the domain didn't exist before but does now,
+      // return the existing one instead of creating new.
+      if (!domainsExistsBeforeSynchronizedBlock && domains.containsKey(domainKey)) {
+        return completedFuture(domains.get(domainKey));
+      }
       return pseudonymisationClient
                  .getDomain(domainKey)
                  .orTimeout(5, SECONDS)
