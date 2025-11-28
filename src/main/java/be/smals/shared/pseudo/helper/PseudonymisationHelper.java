@@ -3,7 +3,6 @@ package be.smals.shared.pseudo.helper;
 import static be.smals.shared.pseudo.helper.exceptions.ThrowableWrapperException.throwWrapped;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.synchronizedSet;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
@@ -57,8 +56,8 @@ public final class PseudonymisationHelper {
   private final PseudonymisationClient pseudonymisationClient;
   private final PrivateKeySupplier privateKeySupplier;
   private final SecureRandom secureRandom;
-  private final Object domainsLock;
-  private final ConcurrentHashMap<String, DomainImpl> domains;
+  private final ConcurrentHashMap<String, CompletableFuture<DomainImpl>> domains;
+  private final ConcurrentHashMap<String, CompletableFuture<DomainImpl>> previousDomains;
   private final Set<String> refreshableDomains;
   /**
    * Unmodifiable copy of refreshableDomains.
@@ -87,7 +86,6 @@ public final class PseudonymisationHelper {
     refreshableDomains = synchronizedSet(new HashSet<>(4, 1f));
     unmodifiableCopyOfRefreshableDomains = Set.of();
     secureRandom = CryptoServicesRegistrar.getSecureRandom();
-    domainsLock = new Object();
     initJwksSilently();
     Stream.of(Map.entry("jwksSupplier", Optional.ofNullable(jwksSupplier)),
               Map.entry("jwksUrl", Optional.ofNullable(jwksUrl)))
@@ -96,13 +94,28 @@ public final class PseudonymisationHelper {
             log.warn("`{}` is null: this PseudonymisationHelper will not be able to encrypt or decrypt any transit info", property.getKey());
           });
     domains = new ConcurrentHashMap<>(8, 0.75f, 8);
+    previousDomains = new ConcurrentHashMap<>(8, 0.75f, 8);
   }
 
-  @SuppressWarnings("unchecked")
+  /**
+   * Retrieves a {@link CompletableFuture} wrapping a {@link Domain} object associated with the specified domain key.
+   * If the domain is not available or encounters issues like unfinished initialization, completion with exceptions,
+   * or cancellation, this method will return the previous version of the domain.
+   * <p>
+   * Please note that if the {@link CompletableFuture} did not complete successfully, no automatic refresh will be attempted.
+   *
+   * @param domainKey the unique key identifying the domain to be retrieved
+   * @return a {@link CompletableFuture} containing the {@link Domain} object associated with the provided key
+   */
   public CompletableFuture<? extends Domain> getDomain(final String domainKey) {
-    return Optional.ofNullable((Domain) domains.get(domainKey))
-                   .map(CompletableFuture::completedFuture)
-                   .orElseGet(() -> (CompletableFuture<Domain>) refreshDomain(domainKey));
+    final var domain = domains.get(domainKey);
+    if (domain == null) {
+      return refreshDomain(domainKey);
+    }
+    if (domain.isDone() && !domain.isCompletedExceptionally() && !domain.isCancelled()) {
+      return domain;
+    }
+    return previousDomains.getOrDefault(domainKey, domain);
   }
 
   /**
@@ -123,30 +136,47 @@ public final class PseudonymisationHelper {
   /**
    * Refreshes the specified domain by retrieving its details from the eHealth pseudonymisation service,
    * creating a new domain object, and updating the domain cache.
+   * <p>
+   * Please call the {@code get()} method on the returned {@link CompletableFuture} to check that the refresh was successful.
    *
    * @param domainKey the unique key identifying the domain to be refreshed
    * @return a {@link CompletableFuture} containing the refreshed domain object
    */
   public CompletableFuture<? extends Domain> refreshDomain(final String domainKey) {
-    final var domainsExistsBeforeSynchronizedBlock = domains.containsKey(domainKey);
-    synchronized (domainsLock) {
-
-      // Handle race condition where another thread may have already created the domain
-      // between our initial check and entering the synchronized block.
-      // If the domain didn't exist before but does now,
-      // return the existing one instead of creating new.
-      if (!domainsExistsBeforeSynchronizedBlock && domains.containsKey(domainKey)) {
-        return completedFuture(domains.get(domainKey));
-      }
-      return pseudonymisationClient
-                 .getDomain(domainKey)
-                 .orTimeout(5, SECONDS)
-                 .thenApply(this::createDomain)
-                 .thenApply(domain -> {
-                   domains.put(domain.key(), domain);
-                   return domain;
-                 });
+    var domain = domains.get(domainKey);
+    // The first time the domain is asked, we create a new CompletableFuture
+    if (domain == null) {
+      return domains.computeIfAbsent(domainKey, this::domainCompletableFuture);
     }
+    // If the domain is still being initialized, we return the same CompletableFuture
+    if (!domain.isDone()) {
+      return domain;
+    }
+    // If the domain completed successfully (not exceptionally or canceled),
+    // store it in previousDomains map to keep a usable domain to return
+    if (!domain.isCompletedExceptionally() && !domain.isCancelled()) {
+      previousDomains.put(domainKey, domain);
+    }
+    final var newDomain = domainCompletableFuture(domainKey);
+    final var replaced = domains.replace(domainKey, domain, newDomain);
+    // If the domain was successfully replaced, return the new domain
+    // Otherwise return the current domain from the map (which may have been updated by another thread)
+    return replaced ? newDomain : domains.get(domainKey);
+  }
+
+  /**
+   * Retrieves a {@link CompletableFuture} that, when completed, provides a {@link DomainImpl} object
+   * corresponding to the specified domain key. The domain information is fetched using the
+   * pseudonymisation client and processed to create the {@link DomainImpl} instance.
+   *
+   * @param domainKey the unique key identifying the domain to be retrieved
+   * @return a {@link CompletableFuture} containing the {@link DomainImpl} object for the given domain key
+   */
+  private CompletableFuture<DomainImpl> domainCompletableFuture(final String domainKey) {
+    return pseudonymisationClient
+               .getDomain(domainKey)
+               .orTimeout(5, SECONDS)
+               .thenApply(this::createDomain);
   }
 
   private DomainImpl createDomain(final String rawDomain) throws ThrowableWrapperException {

@@ -155,4 +155,17 @@ public class DomainImpl implements Domain {
   public PseudonymInTransitFactoryImpl pseudonymInTransitFactory() {
     return pseudonymInTransitFactory;
   }
+
+  /**
+   * Indicates whether some other object is "equal to" this one.
+   * <p>
+   * Please <b>do not change this implementation</b> because it is used by the PseudonymisationHelper to check if a domain is already initialized.
+   *
+   * @param obj the reference object with which to compare
+   * @return {@code true} if this object is the same as the obj argument; {@code false} otherwise
+   */
+  @Override
+  public final boolean equals(final Object obj) {
+    return (this == obj);
+  }
 }
