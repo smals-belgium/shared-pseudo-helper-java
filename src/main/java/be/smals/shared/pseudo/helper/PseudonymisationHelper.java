@@ -238,7 +238,10 @@ public final class PseudonymisationHelper {
                                         secureRandom);
       if (isKnownJku) {
         if (refreshableDomains.add(domainKey)) {
-          unmodifiableCopyOfRefreshableDomains = Set.copyOf(refreshableDomains);
+          // Synchronized block ensures that if 2 domains are refreshed at the same time,
+          synchronized (refreshableDomains) {
+            unmodifiableCopyOfRefreshableDomains = Set.of(refreshableDomains.toArray(EMPTY_STRING_ARRAY));
+          }
         }
       }
       return domain;
