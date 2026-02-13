@@ -260,8 +260,10 @@ public final class PseudonymisationHelper {
   private JWK getJweKey(final JWEObjectJSON parsedJwe, final String jku) {
     final var kids = parsedJwe.getRecipients().stream()
                               .map(JWEObjectJSON.Recipient::getUnprotectedHeader)
+                              .filter(Objects::nonNull)
                               .filter(unprotectedHeader -> jku.equals(unprotectedHeader.getParam("jku")))
                               .map(UnprotectedHeader::getKeyID)
+                              .filter(Objects::nonNull)
                               .collect(toList());
     if (kids.isEmpty()) {
       log.error("No valid recipient found in the domain's secret key for the JKU: {}", jku);
