@@ -50,6 +50,9 @@ public final class PseudonymisationHelper {
 
   private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
   private static final Logger log = LoggerFactory.getLogger(PseudonymisationHelper.class);
+  private static final String[] EMPTY_STRING_ARRAY = new String[0];
+  private static final String KID_PROBLEM_W_DOMAIN = "Failed to decrypt the secret key with kid `{}` of the domain `{}`. " +
+                                                     "The response from eHealth was\n{}";
 
   private final URI jwksUrl;
   private final Supplier<CompletableFuture<String>> jwksSupplier;
@@ -190,6 +193,7 @@ public final class PseudonymisationHelper {
       @SuppressWarnings("unchecked")
       final var secretKeysFromEHealth = (List<Map<String, Object>>) parsedEHealthDomain.get("secretKeys");
       final var secretKeys = new ConcurrentHashMap<String, SecretKey>(secretKeysFromEHealth.size(), 1f, 1);
+      // If we are an owner of the domain, we decrypt all the secret keys
       //noinspection unchecked
       if (jku != null && jwksSupplier != null && ((List<String>) parsedEHealthDomain.get("jku")).contains(jku)) {
         isKnownJku = true;
@@ -210,9 +214,10 @@ public final class PseudonymisationHelper {
                 activeKeyAlgorithm = EncryptionMethod.parse(algName);
               }
             } else {
-              log.error("No matching kid found in the JWKS `{}`: impossible to encrypt/decrypt any transit info of the domain `{}`", jwksUrl, domainKey);
+              log.error(KID_PROBLEM_W_DOMAIN, kid, domainKey, rawDomain);
             }
           } catch (final ParseException e) {
+            log.error("An error occurred when processing the domain `{}`. Response from eHealth was\n{}", domainKey, rawDomain);
             throw new ThrowableWrapperException(e);
           }
         }
@@ -258,6 +263,10 @@ public final class PseudonymisationHelper {
                               .filter(unprotectedHeader -> jku.equals(unprotectedHeader.getParam("jku")))
                               .map(UnprotectedHeader::getKeyID)
                               .collect(toList());
+    if (kids.isEmpty()) {
+      log.error("No valid recipient found in the domain's secret key for the JKU: {}", jku);
+      return null;
+    }
     var jwks = getJwks();
     var optionalJweKey = findMatchingJwk(jwks, kids);
     if (optionalJweKey.isEmpty()) {
@@ -265,7 +274,11 @@ public final class PseudonymisationHelper {
       jwks = getJwks();
       optionalJweKey = findMatchingJwk(jwks, kids);
     }
-    return optionalJweKey.orElse(null);
+    if (optionalJweKey.isEmpty()) {
+      log.error("No JWK with kids in {} found in the JKU `{}`", kids, jku);
+      return null;
+    }
+    return optionalJweKey.get();
   }
 
   private Optional<JWK> findMatchingJwk(final JWKSet jwks, final List<String> kids) {
