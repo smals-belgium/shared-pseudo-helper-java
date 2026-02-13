@@ -363,7 +363,7 @@ This call is asynchronous and that's why it returns a `CompletableFuture<Domain>
 Your `PseudonmymisationClient` must call eHealth Pseudonymisation service for the domains you need to encrypt/decrypt transitInfo.
 For the other domains, your `PseudonmymisationClient` should return a hardcoded representation of the domain.
 
-.Exemple with hardcoded `ehealth_v1` domain
+.Example with hardcoded `ehealth_v1` domain
 [source,java]
 ----
 public class MyPseudonymisationClient implements PseudonymisationClient {
@@ -385,7 +385,7 @@ public class MyPseudonymisationClient implements PseudonymisationClient {
 
 ====
 
-.Exemple that retrieve the `uhmep_v1` domain
+.Example that retrieve the `uhmep_v1` domain
 [source,java]
 ----
 Domain domain = pseudonymisationHelper.getDomain("uhmep_v1").get();
@@ -503,7 +503,7 @@ If, for performance reasons, you also store the Y coordinate in your persistence
 
 [WARNING]
 ====
-If you don't have perfonance issues in computing the Y coodrinate, it is recommanded to only store the X coordinate in your persistence system.
+If you don't have performance issues in computing the Y coordinate, it is recommended to only store the X coordinate in your persistence system.
 
 If you decide to store the Y coordinate in your persistence system, you should not define the X-Y pair as a unique identifier: only the X should be used as an identifier because you have no guarantee that the user who will call your API will provide the same Y coordinate you stored in your persistence system.
 ====
@@ -863,7 +863,7 @@ These examples demonstrate how to use PseudonymisationHelper for common use case
 
 Most of the use cases can be done synchronously or asynchronously.
 To avoid writing too much code here, we will provide few examples in both synchronous and asynchronous ways.
-The other use cases will be shown in only one of the twi way.
+The other use cases will be shown in only one of the two ways.
 
 You can, of course, use it the way you prefer and, for example, use `thenApply()` with a final `get()` even if you don't need the result asynchronously.
 
@@ -1042,7 +1042,7 @@ pseudonymisationHelper
 
 === Resolve a pseudonym at rest from a pseudonym in transit
 
-As a REST API, I want to get the pseudonym at rest (always the same for a citizen in a pseusonymisation domain) from a pseudonym in transit to find information about a citizen in my database.
+As a REST API, I want to get the pseudonym at rest (always the same for a citizen in a pseudonymisation domain) from a pseudonym in transit to find information about a citizen in my database.
 
 .Synchronous code
 [source,java]
@@ -1182,6 +1182,45 @@ var exp =
         .header()
         .get("exp");
 ----
+
+== Preloading of the known domains
+
+If you don't want the first calls to `PseudonymisationHelper` to be slow because of the fetching of the domain, you can preload the domains your application knows by calling `getDomain("yourdomain_v1").get()`.
+
+If `get()` throws an exception, you can decide to prevent the application from starting (because you suspect the problem is caused by a wrong configuration) or to continue with unloaded domains.
+
+If you decide to continue the deployment, you should asynchronously and periodically (once per minute, for example) try to reload the domain by calling `refreshDomain("yourdomain_v1").get()` until `get()` does not throw any exception.
+
+.Preloading example with retry
+[source,java]
+----
+try {
+    pseudonymisationHelper.getDomain("yourdomain_v1").get();
+} catch (Exception e) {
+    log.warn("Domain preloading failed, will retry periodically", e);
+    // Schedule asynchronous periodic retry using refreshDomain() here
+}
+----
+
+== Refreshing the domains you own every 6 hours
+
+Because of the domain secret keys rotation, eHealth requires you to refresh the domains you own every 6 hours.
+
+To achieve this, you can call `refreshDomain("yourdomain_v1").get()` asynchronously for every domain you own.
+
+You can call `refreshableDomains()` to retrieve the set of domains you own that `PseudonymisationHelper` has previously loaded.
+
+If the refresh fails, you should asynchronously and periodically (once per minute, for example) retry by calling `refreshDomain("yourdomain_v1").get()` until `get()` does not throw any exception.
+
+WARNING: If a domain is not refreshed within the expected timeframe, the secret keys may become outdated, and operations on pseudonyms in transit for this domain may fail.
+
+[IMPORTANT]
+====
+If the library throws an `UnknownKidException`, it can be caused by:
+
+* *The domain has not been refreshed in time* — ensure you refresh your domains every 6 hours.
+* *The received `PseudonymInTransit` was created with an expired secret key* — ask the sender to refresh their domain and to do not reuse expired `PseudonymInTransit`.
+====
 
 == Caching
 
