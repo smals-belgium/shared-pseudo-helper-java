@@ -215,6 +215,7 @@ public final class PseudonymisationHelper {
               }
             } else {
               log.error(KID_PROBLEM_W_DOMAIN, kid, domainKey, rawDomain);
+              throw new IllegalStateException("Failed to decrypt the secret key with kid `" + kid + "` of the domain `" + domainKey + "`");
             }
           } catch (final ParseException e) {
             log.error("An error occurred when processing the domain `{}`. Response from eHealth was\n{}", domainKey, rawDomain);
