@@ -29,6 +29,19 @@
               "alg": "RSA-OAEP-256",
               "kid": "1757512889"
             }
+          },
+          {
+            "encrypted_key": "oDGTcgq7KkQYrKFFXNJXGqL7LoL5KvF6B-VJx31Njn8IpDAeY7WDbmnMzCUlArgHpIIwafUhE-FHdj9o64JWt7kgplxeKHzn4UrSb8M29tPAAix1rkhXS9a8jUM46C0gT6pt6xRoIQR-xwOqLsdh5P71p-M3MDPP-Hhp26dVKbfGEMPNE3FWnXvZmOnItCVxnao9On2Y_EipURFJlr31zooKaMXF2n3u1dJi1Y-AAXR4fsu4N8EQnbSxm4am9jKSNitiuJZ59bdQ_bTj0HR036lOTXg9KjZZs-_fqgzq8zUR7OfN2VYfhnk7D0xYl3sMKNTkUKyWZwyV4louwSM6vw",
+            "header": {
+              "jku": "https://my-jwks.net/1757512889"
+            }
+          },
+          {
+            "encrypted_key": "oDGTcgq7KkQYrKFFXNJXGqL7LoL5KvF6B-VJx31Njn8IpDAeY7WDbmnMzCUlArgHpIIwafUhE-FHdj9o64JWt7kgplxeKHzn4UrSb8M29tPAAix1rkhXS9a8jUM46C0gT6pt6xRoIQR-xwOqLsdh5P71p-M3MDPP-Hhp26dVKbfGEMPNE3FWnXvZmOnItCVxnao9On2Y_EipURFJlr31zooKaMXF2n3u1dJi1Y-AAXR4fsu4N8EQnbSxm4am9jKSNitiuJZ59bdQ_bTj0HR036lOTXg9KjZZs-_fqgzq8zUR7OfN2VYfhnk7D0xYl3sMKNTkUKyWZwyV4louwSM6vw",
+            "header": {}
+          },
+          {
+            "encrypted_key": "oDGTcgq7KkQYrKFFXNJXGqL7LoL5KvF6B-VJx31Njn8IpDAeY7WDbmnMzCUlArgHpIIwafUhE-FHdj9o64JWt7kgplxeKHzn4UrSb8M29tPAAix1rkhXS9a8jUM46C0gT6pt6xRoIQR-xwOqLsdh5P71p-M3MDPP-Hhp26dVKbfGEMPNE3FWnXvZmOnItCVxnao9On2Y_EipURFJlr31zooKaMXF2n3u1dJi1Y-AAXR4fsu4N8EQnbSxm4am9jKSNitiuJZ59bdQ_bTj0HR036lOTXg9KjZZs-_fqgzq8zUR7OfN2VYfhnk7D0xYl3sMKNTkUKyWZwyV4louwSM6vw"
           }
         ],
         "tag": "0mdbd1TeqfD_K_IxM4el0A",
